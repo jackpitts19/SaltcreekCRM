@@ -1,0 +1,234 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String
+  role        String   @default("banker")
+  avatarUrl   String?
+  title       String?
+  phone       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  notes           Note[]
+  assignedDeals   Deal[]         @relation("AssignedDeals")
+  activities      Activity[]
+  sequences       Sequence[]
+  emailLogs       EmailLog[]
+  callLogs        CallLog[]
+}
+
+model Company {
+  id            String   @id @default(cuid())
+  name          String
+  domain        String?
+  industry      String?
+  subIndustry   String?
+  description   String?
+  website       String?
+  linkedinUrl   String?
+  hqLocation    String?
+  employeeCount Int?
+  revenue       Float?
+  status        String   @default("prospect")
+  tier          String   @default("tier3")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  contacts   Contact[]
+  deals      Deal[]
+  notes      Note[]
+  activities Activity[]
+}
+
+model Contact {
+  id              String    @id @default(cuid())
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  mobile          String?
+  title           String?
+  linkedinUrl     String?
+  companyId       String?
+  company         Company?  @relation(fields: [companyId], references: [id])
+  status          String    @default("prospect")
+  leadSource      String?
+  tags            String    @default("")
+  lastContactedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  notes               Note[]
+  emailLogs           EmailLog[]
+  callLogs            CallLog[]
+  dealContacts        DealContact[]
+  activities          Activity[]
+  sequenceEnrollments SequenceEnrollment[]
+}
+
+model Deal {
+  id                String    @id @default(cuid())
+  name              String
+  dealType          String    @default("advisory")
+  stage             String    @default("prospecting")
+  value             Float?
+  probability       Int       @default(0)
+  expectedCloseDate DateTime?
+  actualCloseDate   DateTime?
+  description       String?
+  companyId         String?
+  company           Company?  @relation(fields: [companyId], references: [id])
+  assignedToId      String?
+  assignedTo        User?     @relation("AssignedDeals", fields: [assignedToId], references: [id])
+  lostReason        String?
+  source            String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  contacts   DealContact[]
+  notes      Note[]
+  activities Activity[]
+}
+
+model DealContact {
+  id        String  @id @default(cuid())
+  dealId    String
+  deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  role      String?
+
+  @@unique([dealId, contactId])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  content   String
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id])
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id])
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+  dealId    String?
+  deal      Deal?    @relation(fields: [dealId], references: [id])
+  isPinned  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailLog {
+  id                   String              @id @default(cuid())
+  subject              String
+  body                 String?
+  direction            String
+  fromEmail            String
+  toEmail              String
+  ccEmail              String?
+  status               String              @default("sent")
+  openedAt             DateTime?
+  repliedAt            DateTime?
+  gmailMsgId           String?             @unique
+  gmailThreadId        String?
+  contactId            String?
+  contact              Contact?            @relation(fields: [contactId], references: [id])
+  userId               String?
+  user                 User?               @relation(fields: [userId], references: [id])
+  sequenceEnrollmentId String?
+  sequenceEnrollment   SequenceEnrollment? @relation(fields: [sequenceEnrollmentId], references: [id])
+  sentAt               DateTime            @default(now())
+  createdAt            DateTime            @default(now())
+}
+
+model CallLog {
+  id          String   @id @default(cuid())
+  direction   String
+  duration    Int?
+  status      String
+  fromNumber  String?
+  toNumber    String?
+  notes       String?
+  recording   String?
+  kixieCallId String?  @unique
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  calledAt    DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model Sequence {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  status      String   @default("active")
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  steps       SequenceStep[]
+  enrollments SequenceEnrollment[]
+}
+
+model SequenceStep {
+  id         String   @id @default(cuid())
+  sequenceId String
+  sequence   Sequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  stepNumber Int
+  type       String
+  delayDays  Int      @default(0)
+  subject    String?
+  body       String?
+  taskNote   String?
+  createdAt  DateTime @default(now())
+}
+
+model SequenceEnrollment {
+  id          String    @id @default(cuid())
+  sequenceId  String
+  sequence    Sequence  @relation(fields: [sequenceId], references: [id])
+  contactId   String
+  contact     Contact   @relation(fields: [contactId], references: [id])
+  currentStep Int       @default(0)
+  status      String    @default("active")
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+
+  emailsSent EmailLog[]
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  type        String
+  description String
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id])
+  dealId      String?
+  deal        Deal?    @relation(fields: [dealId], references: [id])
+  metadata    String?
+  createdAt   DateTime @default(now())
+}
+
+model Integration {
+  id           String   @id @default(cuid())
+  type         String   @unique
+  enabled      Boolean  @default(false)
+  accessToken  String?
+  refreshToken String?
+  config       String?
+  updatedAt    DateTime @updatedAt
+}

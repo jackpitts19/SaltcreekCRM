@@ -5,7 +5,7 @@ import TopBar from "@/components/layout/TopBar";
 import Badge from "@/components/ui/Badge";
 import Card, { CardHeader } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Input";
-import { Globe, MapPin, Users, DollarSign, ChevronLeft, Building2, Pin, PinOff, Mail, Phone } from "lucide-react";
+import { Globe, MapPin, Users, DollarSign, ChevronLeft, Building2, Pin, PinOff, Mail, Phone, Sparkles, Linkedin } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency, formatRelativeTime, formatDate, formatDuration, getDealStage, getDealType } from "@/lib/utils";
 import { useUser } from "@/lib/userContext";
@@ -27,8 +27,9 @@ interface CallLog {
 
 interface CompanyDetail {
   id: string; name: string; industry: string | null; subIndustry: string | null;
-  description: string | null; website: string | null; hqLocation: string | null;
-  employeeCount: number | null; revenue: number | null; status: string; tier: string;
+  description: string | null; website: string | null; linkedinUrl: string | null;
+  hqLocation: string | null; employeeCount: number | null; revenue: number | null;
+  status: string; tier: string; type: string; tags: string; enrichedAt: string | null;
   createdAt: string;
   contacts: Array<{ id: string; firstName: string; lastName: string; title: string | null; status: string; _count: { emailLogs: number; callLogs: number } }>;
   deals: Array<{ id: string; name: string; stage: string; dealType: string; value: number | null; assignedTo: { name: string } | null }>;
@@ -48,6 +49,7 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [noteText, setNoteText] = useState("");
   const [addingNote, setAddingNote] = useState(false);
+  const [enriching, setEnriching] = useState(false);
 
   async function load() {
     const res = await fetch(`/api/companies/${id}`);
@@ -68,6 +70,25 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
     setAddingNote(false);
     toast.success("Note saved");
     load();
+  }
+
+  async function enrichCompany() {
+    setEnriching(true);
+    try {
+      const res = await fetch("/api/enrich", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: id }),
+      });
+      if (res.ok) {
+        toast.success("Company enriched with AI data");
+        load();
+      } else {
+        toast.error("Enrichment failed — check OpenAI key");
+      }
+    } finally {
+      setEnriching(false);
+    }
   }
 
   async function togglePin(noteId: string, isPinned: boolean) {
@@ -95,7 +116,14 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="flex flex-col min-h-full">
-      <TopBar title={company.name} subtitle={[company.industry, company.hqLocation].filter(Boolean).join(" · ")} />
+      <TopBar
+        title={company.name}
+        subtitle={[company.industry, company.hqLocation].filter(Boolean).join(" · ")}
+        action={{
+          label: enriching ? "Enriching..." : "Enrich with AI",
+          onClick: enrichCompany,
+        }}
+      />
 
       <div className="p-6 space-y-5">
         <Link href="/companies" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 w-fit">
@@ -126,6 +154,12 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
                   <Globe size={14} className="text-slate-400" /> {company.website.replace(/^https?:\/\//, "")}
                 </a>
               )}
+              {company.linkedinUrl && (
+                <a href={company.linkedinUrl} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-slate-600 hover:text-blue-600">
+                  <Linkedin size={14} className="text-slate-400" /> LinkedIn
+                </a>
+              )}
               {company.hqLocation && (
                 <p className="flex items-center gap-2 text-slate-600">
                   <MapPin size={14} className="text-slate-400" /> {company.hqLocation}
@@ -139,6 +173,11 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
               {company.employeeCount && (
                 <p className="flex items-center gap-2 text-slate-600">
                   <Users size={14} className="text-slate-400" /> {company.employeeCount.toLocaleString()} employees
+                </p>
+              )}
+              {company.enrichedAt && (
+                <p className="flex items-center gap-2 text-xs text-emerald-600">
+                  <Sparkles size={12} /> AI enriched {formatRelativeTime(company.enrichedAt)}
                 </p>
               )}
             </div>

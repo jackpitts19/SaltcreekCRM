@@ -43,7 +43,7 @@ export default function ContactsPage() {
 
   const [form, setForm] = useState({
     firstName: "", lastName: "", email: "", phone: "", mobile: "",
-    title: "", companyId: "", status: "prospect", leadSource: "", tags: "", linkedinUrl: "",
+    title: "", companyName: "", companyType: "other", status: "prospect", leadSource: "", tags: "", linkedinUrl: "",
   });
 
   const load = useCallback(async () => {
@@ -73,7 +73,7 @@ export default function ContactsPage() {
     setSaving(false);
     setShowModal(false);
     setForm({ firstName: "", lastName: "", email: "", phone: "", mobile: "",
-      title: "", companyId: "", status: "prospect", leadSource: "", tags: "", linkedinUrl: "" });
+      title: "", companyName: "", companyType: "other", status: "prospect", leadSource: "", tags: "", linkedinUrl: "" });
     toast.success(`${form.firstName} ${form.lastName} added`);
     load();
   }
@@ -219,6 +219,23 @@ export default function ContactsPage() {
           <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} />
           <Input label="Phone" type="tel" value={form.phone} onChange={(e) => setForm({...form, phone: e.target.value})} />
           <Input label="Title / Role" value={form.title} onChange={(e) => setForm({...form, title: e.target.value})} className="col-span-2" />
+          <Input
+            label="Company Name"
+            value={form.companyName}
+            onChange={(e) => setForm({...form, companyName: e.target.value})}
+            hint="Auto-creates company + AI enrichment if new"
+          />
+          <Select
+            label="Company Type"
+            value={form.companyType}
+            onChange={(e) => setForm({...form, companyType: e.target.value})}
+            options={[
+              { value: "sell_side", label: "Sell-Side (Business Owner)" },
+              { value: "buy_side", label: "Buy-Side (PE / Family Office)" },
+              { value: "service_provider", label: "Service Provider" },
+              { value: "other", label: "Other" },
+            ]}
+          />
           <Input label="LinkedIn URL" value={form.linkedinUrl} onChange={(e) => setForm({...form, linkedinUrl: e.target.value})} className="col-span-2" />
           <Select label="Status" value={form.status} onChange={(e) => setForm({...form, status: e.target.value})}
             options={[

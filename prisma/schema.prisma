@@ -27,7 +27,7 @@ model User {
 }
 
 model Company {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String
   domain        String?
   industry      String?
@@ -38,10 +38,13 @@ model Company {
   hqLocation    String?
   employeeCount Int?
   revenue       Float?
-  status        String   @default("prospect")
-  tier          String   @default("tier3")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  status        String    @default("prospect")
+  tier          String    @default("tier3")
+  type          String    @default("other")
+  tags          String    @default("")
+  enrichedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   contacts   Contact[]
   deals      Deal[]

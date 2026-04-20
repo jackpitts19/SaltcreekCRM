@@ -40,6 +40,30 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const data = await req.json();
 
+  // Auto-create company if a name was provided but no companyId
+  let companyId = data.companyId ?? null;
+  let isNewCompany = false;
+
+  if (!companyId && data.companyName?.trim()) {
+    const name = data.companyName.trim();
+    const existing = await prisma.company.findFirst({
+      where: { name: { equals: name } },
+    });
+    if (existing) {
+      companyId = existing.id;
+    } else {
+      const created = await prisma.company.create({
+        data: {
+          name,
+          type: data.companyType ?? "other",
+          status: "prospect",
+        },
+      });
+      companyId = created.id;
+      isNewCompany = true;
+    }
+  }
+
   const contact = await prisma.contact.create({
     data: {
       firstName: data.firstName,
@@ -49,7 +73,7 @@ export async function POST(req: NextRequest) {
       mobile: data.mobile ?? null,
       title: data.title ?? null,
       linkedinUrl: data.linkedinUrl ?? null,
-      companyId: data.companyId ?? null,
+      companyId,
       status: data.status ?? "prospect",
       leadSource: data.leadSource ?? null,
       tags: data.tags ?? "",
@@ -65,5 +89,15 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json(contact, { status: 201 });
+  // Kick off AI enrichment in the background for new companies
+  if (isNewCompany && companyId) {
+    const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+    fetch(`${baseUrl}/api/enrich`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyId }),
+    }).catch(() => {}); // fire-and-forget
+  }
+
+  return NextResponse.json({ ...contact, isNewCompany }, { status: 201 });
 }

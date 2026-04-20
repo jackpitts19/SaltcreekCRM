@@ -121,7 +121,7 @@ export default async function DashboardPage() {
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
-                  {data.deals.map((deal) => {
+                  {data.deals.map((deal: any) => {
                     const stage = getDealStage(deal.stage);
                     const type = getDealType(deal.dealType);
                     return (
@@ -164,7 +164,7 @@ export default async function DashboardPage() {
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
-                  {data.recentActivities.map((activity) => (
+                  {data.recentActivities.map((activity: any) => (
                     <div key={activity.id} className="px-5 py-3 flex gap-3">
                       <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                         {React.createElement(activityIconMap[activity.type] ?? Clock, { size: 12, className: "text-slate-500" })}
@@ -224,7 +224,7 @@ export default async function DashboardPage() {
                 { href: "/emails", label: "Log Email", icon: Mail, bg: "bg-sky-50 hover:bg-sky-100", iconColor: "text-sky-600", textColor: "text-sky-800" },
                 { href: "/calls", label: "Log Call", icon: Phone, bg: "bg-green-50 hover:bg-green-100", iconColor: "text-green-600", textColor: "text-green-800" },
                 { href: "/sequences", label: "Sequences", icon: ArrowRightLeft, bg: "bg-purple-50 hover:bg-purple-100", iconColor: "text-purple-600", textColor: "text-purple-800" },
-              ].map((action) => (
+              ].map((action: any) => (
                 <Link key={action.href} href={action.href}
                   className={`flex flex-col items-center gap-2 px-3 py-3.5 rounded-xl text-center transition-colors ${action.bg}`}>
                   <action.icon size={18} className={action.iconColor} />

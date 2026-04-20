@@ -5,7 +5,7 @@ import TopBar from "@/components/layout/TopBar";
 import Modal from "@/components/ui/Modal";
 import Input, { Select } from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
-import { Search, Filter, Linkedin, Mail, Phone, Building2, UserPlus } from "lucide-react";
+import { Search, Filter, Link2, Mail, Phone, Building2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { formatRelativeTime, LEAD_SOURCES } from "@/lib/utils";
 import { useToast } from "@/lib/toast";

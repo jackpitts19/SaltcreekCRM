@@ -7,7 +7,7 @@ import Card, { CardHeader } from "@/components/ui/Card";
 import Modal from "@/components/ui/Modal";
 import { Textarea } from "@/components/ui/Input";
 import {
-  Mail, Phone, Building2, Linkedin, Clock, ExternalLink,
+  Mail, Phone, Building2, Link2, Clock, ExternalLink,
   Pin, PinOff, ChevronLeft, TrendingUp, Edit2
 } from "lucide-react";
 import Link from "next/link";
@@ -170,7 +170,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
               {contact.linkedinUrl && (
                 <a href={contact.linkedinUrl} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 text-slate-600 hover:text-blue-700">
-                  <Linkedin size={14} className="text-slate-400" /> LinkedIn
+                  <Link2 size={14} className="text-slate-400" /> LinkedIn
                   <ExternalLink size={11} />
                 </a>
               )}

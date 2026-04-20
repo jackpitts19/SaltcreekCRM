@@ -282,7 +282,7 @@ export default function DealsPage() {
           <Input label="Probability (%)" type="number" min="0" max="100" value={form.probability} onChange={(e) => setForm({...form, probability: e.target.value})} />
           <Input label="Expected Close Date" type="date" value={form.expectedCloseDate} onChange={(e) => setForm({...form, expectedCloseDate: e.target.value})} />
           <Select label="Lead Source" value={form.source} onChange={(e) => setForm({...form, source: e.target.value})}
-            options={[{ value: "", label: "Select source..." }, ...LEAD_SOURCES]} />
+            options={[{ value: "", label: "Select source..." }, ...LEAD_SOURCES.map(s => ({ value: s.id, label: s.label }))]} />
           <Textarea label="Description" value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} rows={3} className="col-span-2" />
         </form>
       </Modal>

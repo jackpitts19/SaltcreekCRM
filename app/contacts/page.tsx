@@ -229,7 +229,7 @@ export default function ContactsPage() {
             ]}
           />
           <Select label="Lead Source" value={form.leadSource} onChange={(e) => setForm({...form, leadSource: e.target.value})}
-            options={[{ value: "", label: "Select source..." }, ...LEAD_SOURCES]}
+            options={[{ value: "", label: "Select source..." }, ...LEAD_SOURCES.map(s => ({ value: s.id, label: s.label }))]}
           />
           <Input label="Tags (comma separated)" value={form.tags} onChange={(e) => setForm({...form, tags: e.target.value})} className="col-span-2" hint="e.g. M&A, CFO, Decision Maker" />
         </form>

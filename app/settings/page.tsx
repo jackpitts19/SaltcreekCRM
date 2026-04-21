@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import TopBar from "@/components/layout/TopBar";
 import Modal from "@/components/ui/Modal";
 import Input, { Select } from "@/components/ui/Input";
-import { Mail, Phone, Calendar, Webhook, CheckCircle2, ExternalLink, Copy, Settings, Users, Shield, Edit2, Plus } from "lucide-react";
+import { Mail, Phone, Calendar, CheckCircle2, ExternalLink, Copy, Settings, Users, Shield, Edit2, Plus, Smartphone, KeyRound, LogOut, Mic } from "lucide-react";
 import { useUser, AppUser, initials } from "@/lib/userContext";
 
 function copyToClipboard(text: string) {
@@ -20,7 +21,7 @@ const ROLE_OPTIONS = [
 
 export default function SettingsPage() {
   const { currentUser, users, setCurrentUser } = useUser();
-  const [activeTab, setActiveTab] = useState<"integrations" | "team" | "profile">("integrations");
+  const [activeTab, setActiveTab] = useState<"integrations" | "team" | "profile" | "security">("integrations");
   const [copied, setCopied] = useState<string | null>(null);
 
   const webhookBase = typeof window !== "undefined" ? `${window.location.origin}/api/webhooks` : "https://your-domain.com/api/webhooks";
@@ -37,7 +38,7 @@ export default function SettingsPage() {
 
       <div className="p-6">
         <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit mb-6">
-          {(["integrations", "team", "profile"] as const).map(tab => (
+          {(["integrations", "team", "profile", "security"] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`px-4 py-1.5 text-sm font-medium rounded-md capitalize transition-colors ${activeTab === tab ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-800"}`}>
               {tab}
@@ -107,6 +108,27 @@ export default function SettingsPage() {
                 <WebhookUrl label="Kixie Webhook URL" url={`${webhookBase}/kixie`} copied={copied === "kixie"} onCopy={() => handleCopy("kixie", `${webhookBase}/kixie`)} />
               </div>
             </IntegrationCard>
+
+            <IntegrationCard
+              icon={<Mic size={20} className="text-violet-500" />}
+              title="Fireflies.ai"
+              description="Automatically save meeting transcripts and AI summaries to matched contacts after every call."
+              status="not_connected"
+              badge="Webhook"
+            >
+              <div className="space-y-3">
+                <p className="text-sm text-slate-600">
+                  Fireflies will POST a transcript to your webhook after every recorded meeting. Participants are matched to contacts by email — summaries and action items are saved as notes.
+                </p>
+                <ol className="text-sm text-slate-600 space-y-2 list-decimal list-inside">
+                  <li>Log in to <a href="https://app.fireflies.ai" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-0.5">Fireflies.ai <ExternalLink size={11} /></a></li>
+                  <li>Go to <strong>Integrations → Webhooks</strong></li>
+                  <li>Add the webhook URL below and select the <strong>Transcript Ready</strong> event</li>
+                  <li>(Optional) Add <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded">FIREFLIES_WEBHOOK_SECRET=yourtoken</code> to <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded">.env</code> and append <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded">?secret=yourtoken</code> to the URL below</li>
+                </ol>
+                <WebhookUrl label="Fireflies Webhook URL" url={`${webhookBase}/fireflies`} copied={copied === "fireflies"} onCopy={() => handleCopy("fireflies", `${webhookBase}/fireflies`)} />
+              </div>
+            </IntegrationCard>
           </div>
         )}
 
@@ -117,6 +139,8 @@ export default function SettingsPage() {
         {activeTab === "profile" && (
           <ProfileTab currentUser={currentUser} onSave={(updated) => setCurrentUser(updated)} />
         )}
+
+        {activeTab === "security" && <SecurityTab />}
       </div>
     </div>
   );
@@ -355,6 +379,247 @@ function ProfileTab({ currentUser, onSave }: { currentUser: AppUser | null; onSa
       </div>
     </div>
   );
+}
+
+// ─── Security Tab ─────────────────────────────────────────────────────────────
+
+function SecurityTab() {
+  const router = useRouter();
+
+  // 2FA state
+  const [totpEnabled, setTotpEnabled] = useState<boolean | null>(null)
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [totpSecret, setTotpSecret] = useState<string | null>(null)
+  const [verifyCode, setVerifyCode] = useState("")
+  const [disableCode, setDisableCode] = useState("")
+  const [tfaLoading, setTfaLoading] = useState(false)
+  const [tfaMessage, setTfaMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null)
+  const [showDisable, setShowDisable] = useState(false)
+
+  // Password state
+  const [pwdForm, setPwdForm] = useState({ oldPassword: "", newPassword: "", confirm: "" })
+  const [pwdSaving, setPwdSaving] = useState(false)
+  const [pwdMessage, setPwdMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null)
+
+  useEffect(() => {
+    fetch("/api/auth/me").then(r => r.json()).then(d => setTotpEnabled(!!d.totpEnabled))
+  }, [])
+
+  async function startSetup() {
+    setTfaLoading(true)
+    setTfaMessage(null)
+    const res = await fetch("/api/auth/2fa")
+    const data = await res.json()
+    setQrDataUrl(data.qrDataUrl)
+    setTotpSecret(data.secret)
+    setTfaLoading(false)
+  }
+
+  async function verifyEnable() {
+    if (verifyCode.length !== 6) return
+    setTfaLoading(true)
+    const res = await fetch("/api/auth/2fa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: verifyCode }),
+    })
+    const data = await res.json()
+    if (data.ok) {
+      setTotpEnabled(true)
+      setQrDataUrl(null)
+      setTotpSecret(null)
+      setVerifyCode("")
+      setTfaMessage({ type: "ok", text: "Two-factor authentication enabled!" })
+    } else {
+      setTfaMessage({ type: "err", text: data.error ?? "Invalid code" })
+    }
+    setTfaLoading(false)
+  }
+
+  async function verifyDisable() {
+    if (disableCode.length !== 6) return
+    setTfaLoading(true)
+    const res = await fetch("/api/auth/2fa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: disableCode, disable: true }),
+    })
+    const data = await res.json()
+    if (data.ok) {
+      setTotpEnabled(false)
+      setShowDisable(false)
+      setDisableCode("")
+      setTfaMessage({ type: "ok", text: "Two-factor authentication disabled." })
+    } else {
+      setTfaMessage({ type: "err", text: data.error ?? "Invalid code" })
+    }
+    setTfaLoading(false)
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (pwdForm.newPassword !== pwdForm.confirm) {
+      setPwdMessage({ type: "err", text: "Passwords don't match" })
+      return
+    }
+    setPwdSaving(true)
+    setPwdMessage(null)
+    const res = await fetch("/api/auth/password", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ oldPassword: pwdForm.oldPassword, newPassword: pwdForm.newPassword }),
+    })
+    const data = await res.json()
+    if (data.ok) {
+      setPwdMessage({ type: "ok", text: "Password updated successfully." })
+      setPwdForm({ oldPassword: "", newPassword: "", confirm: "" })
+    } else {
+      setPwdMessage({ type: "err", text: data.error ?? "Failed to update password" })
+    }
+    setPwdSaving(false)
+  }
+
+  async function handleSignOut() {
+    await fetch("/api/auth/logout", { method: "POST" })
+    router.push("/login")
+  }
+
+  return (
+    <div className="max-w-md space-y-5">
+      {/* 2FA Card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <h3 className="font-semibold text-slate-900 flex items-center gap-2 mb-1">
+          <Smartphone size={16} className="text-slate-500" /> Two-Factor Authentication
+        </h3>
+        <p className="text-sm text-slate-500 mb-4">
+          Use Authy, Google Authenticator, or any TOTP app to generate login codes.
+        </p>
+
+        {tfaMessage && (
+          <div className={`mb-4 px-3 py-2 rounded-lg text-sm ${tfaMessage.type === "ok" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+            {tfaMessage.text}
+          </div>
+        )}
+
+        {totpEnabled === null && <p className="text-sm text-slate-400">Loading...</p>}
+
+        {totpEnabled === false && !qrDataUrl && (
+          <button onClick={startSetup} disabled={tfaLoading}
+            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+            {tfaLoading ? "Loading..." : "Set Up 2FA"}
+          </button>
+        )}
+
+        {qrDataUrl && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">Scan this QR code with your authenticator app:</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrDataUrl} alt="2FA QR Code" className="w-44 h-44 rounded-lg border border-slate-200" />
+            {totpSecret && (
+              <p className="text-xs text-slate-500">
+                Or enter manually: <code className="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-700">{totpSecret}</code>
+              </p>
+            )}
+            <div className="flex gap-2">
+              <input
+                type="text" inputMode="numeric" maxLength={6} placeholder="6-digit code"
+                value={verifyCode} onChange={e => setVerifyCode(e.target.value.replace(/\D/g, ""))}
+                className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono tracking-widest"
+              />
+              <button onClick={verifyEnable} disabled={verifyCode.length !== 6 || tfaLoading}
+                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                Verify
+              </button>
+            </div>
+          </div>
+        )}
+
+        {totpEnabled === true && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={16} className="text-green-500" />
+              <span className="text-sm font-medium text-green-700">2FA is enabled</span>
+            </div>
+            {!showDisable ? (
+              <button onClick={() => setShowDisable(true)}
+                className="text-sm text-slate-500 hover:text-red-600 underline underline-offset-2">
+                Disable 2FA
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-slate-600">Enter your current authenticator code to disable:</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text" inputMode="numeric" maxLength={6} placeholder="6-digit code"
+                    value={disableCode} onChange={e => setDisableCode(e.target.value.replace(/\D/g, ""))}
+                    className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono tracking-widest"
+                  />
+                  <button onClick={verifyDisable} disabled={disableCode.length !== 6 || tfaLoading}
+                    className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
+                    Disable
+                  </button>
+                  <button onClick={() => { setShowDisable(false); setDisableCode("") }}
+                    className="px-3 py-2 text-sm text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Change Password Card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <h3 className="font-semibold text-slate-900 flex items-center gap-2 mb-4">
+          <KeyRound size={16} className="text-slate-500" /> Change Password
+        </h3>
+
+        {pwdMessage && (
+          <div className={`mb-4 px-3 py-2 rounded-lg text-sm ${pwdMessage.type === "ok" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+            {pwdMessage.text}
+          </div>
+        )}
+
+        <form onSubmit={handleChangePassword} className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Current Password</label>
+            <input type="password" value={pwdForm.oldPassword}
+              onChange={e => setPwdForm({ ...pwdForm, oldPassword: e.target.value })}
+              className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">New Password</label>
+            <input type="password" value={pwdForm.newPassword}
+              onChange={e => setPwdForm({ ...pwdForm, newPassword: e.target.value })}
+              className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Confirm New Password</label>
+            <input type="password" value={pwdForm.confirm}
+              onChange={e => setPwdForm({ ...pwdForm, confirm: e.target.value })}
+              className="mt-1 w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" />
+          </div>
+          <button type="submit" disabled={pwdSaving || !pwdForm.newPassword}
+            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+            {pwdSaving ? "Saving..." : "Update Password"}
+          </button>
+        </form>
+      </div>
+
+      {/* Sign Out */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <h3 className="font-semibold text-slate-900 flex items-center gap-2 mb-1">
+          <LogOut size={16} className="text-slate-500" /> Sign Out
+        </h3>
+        <p className="text-sm text-slate-500 mb-4">Sign out of this session. You'll need to sign in again to access the CRM.</p>
+        <button onClick={handleSignOut}
+          className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+          Sign Out
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // ─── Shared Components ────────────────────────────────────────────────────────

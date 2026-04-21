@@ -15,6 +15,8 @@ model User {
   avatarUrl   String?
   title       String?
   phone       String?
+  password    String?
+  totpSecret  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -24,6 +26,7 @@ model User {
   sequences       Sequence[]
   emailLogs       EmailLog[]
   callLogs        CallLog[]
+  tasks           Task[]
 }
 
 model Company {
@@ -47,9 +50,11 @@ model Company {
   updatedAt     DateTime  @updatedAt
 
   contacts   Contact[]
-  deals      Deal[]
+  deals      Deal[]   @relation("SellerCompany")
+  buyerDeals Deal[]   @relation("BuyerCompany")
   notes      Note[]
   activities Activity[]
+  tasks      Task[]
 }
 
 model Contact {
@@ -73,23 +78,31 @@ model Contact {
   notes               Note[]
   emailLogs           EmailLog[]
   callLogs            CallLog[]
+  textMessages        TextMessage[]
   dealContacts        DealContact[]
   activities          Activity[]
   sequenceEnrollments SequenceEnrollment[]
+  tasks               Task[]
 }
 
 model Deal {
   id                String    @id @default(cuid())
   name              String
-  dealType          String    @default("advisory")
-  stage             String    @default("prospecting")
+  dealType          String    @default("ma_sellside")
+  stage             String    @default("prospect")
   value             Float?
+  ebitda            Float?
   probability       Int       @default(0)
   expectedCloseDate DateTime?
   actualCloseDate   DateTime?
+  ndaSignedDate     DateTime?
+  cimSentDate       DateTime?
+  loiDate           DateTime?
   description       String?
   companyId         String?
-  company           Company?  @relation(fields: [companyId], references: [id])
+  company           Company?  @relation("SellerCompany", fields: [companyId], references: [id])
+  buyerCompanyId    String?
+  buyerCompany      Company?  @relation("BuyerCompany", fields: [buyerCompanyId], references: [id])
   assignedToId      String?
   assignedTo        User?     @relation("AssignedDeals", fields: [assignedToId], references: [id])
   lostReason        String?
@@ -100,6 +113,7 @@ model Deal {
   contacts   DealContact[]
   notes      Note[]
   activities Activity[]
+  tasks      Task[]
 }
 
 model DealContact {
@@ -114,19 +128,42 @@ model DealContact {
 }
 
 model Note {
-  id        String   @id @default(cuid())
-  content   String
-  authorId  String?
-  author    User?    @relation(fields: [authorId], references: [id])
-  contactId String?
-  contact   Contact? @relation(fields: [contactId], references: [id])
-  companyId String?
-  company   Company? @relation(fields: [companyId], references: [id])
-  dealId    String?
-  deal      Deal?    @relation(fields: [dealId], references: [id])
-  isPinned  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String    @id @default(cuid())
+  content      String
+  source       String    @default("manual")
+  meetingTitle String?
+  transcript   String?
+  meetingDate  DateTime?
+  authorId     String?
+  author       User?     @relation(fields: [authorId], references: [id])
+  contactId    String?
+  contact      Contact?  @relation(fields: [contactId], references: [id])
+  companyId    String?
+  company      Company?  @relation(fields: [companyId], references: [id])
+  dealId       String?
+  deal         Deal?     @relation(fields: [dealId], references: [id])
+  isPinned     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Task {
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  dueDate      DateTime?
+  priority     String    @default("medium")
+  status       String    @default("pending")
+  contactId    String?
+  contact      Contact?  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  companyId    String?
+  company      Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  dealId       String?
+  deal         Deal?     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  assignedToId String?
+  assignedTo   User?     @relation(fields: [assignedToId], references: [id])
+  createdAt    DateTime  @default(now())
+  completedAt  DateTime?
 }
 
 model EmailLog {
@@ -225,6 +262,20 @@ model Activity {
   deal        Deal?    @relation(fields: [dealId], references: [id])
   metadata    String?
   createdAt   DateTime @default(now())
+}
+
+model TextMessage {
+  id         String   @id @default(cuid())
+  body       String
+  direction  String   // "outbound" | "inbound"
+  status     String   @default("sent")
+  twilioSid  String?  @unique
+  fromNumber String?
+  toNumber   String?
+  contactId  String?
+  contact    Contact? @relation(fields: [contactId], references: [id])
+  sentAt     DateTime @default(now())
+  createdAt  DateTime @default(now())
 }
 
 model Integration {

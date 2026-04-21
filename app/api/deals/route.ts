@@ -35,10 +35,10 @@ export async function POST(req: NextRequest) {
   const deal = await prisma.deal.create({
     data: {
       name: data.name,
-      dealType: data.dealType ?? "advisory",
-      stage: data.stage ?? "prospecting",
+      dealType: data.dealType ?? "ma_sellside",
+      stage: data.stage ?? "prospect",
       value: data.value ? parseFloat(data.value) : null,
-      probability: data.probability ? parseInt(data.probability) : 0,
+      probability: 0,
       expectedCloseDate: data.expectedCloseDate ? new Date(data.expectedCloseDate) : null,
       description: data.description ?? null,
       companyId: data.companyId ?? null,
@@ -51,12 +51,20 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Link contact to deal if provided
+  if (data.contactId) {
+    await prisma.dealContact.create({
+      data: { dealId: deal.id, contactId: data.contactId, role: data.contactRole ?? null },
+    });
+  }
+
   await prisma.activity.create({
     data: {
       type: "deal_created",
       description: `Deal "${deal.name}" created`,
       dealId: deal.id,
       companyId: deal.companyId ?? undefined,
+      contactId: data.contactId ?? undefined,
     },
   });
 

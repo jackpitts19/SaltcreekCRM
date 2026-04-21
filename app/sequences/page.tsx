@@ -6,7 +6,7 @@ import Modal from "@/components/ui/Modal";
 import Input, { Select, Textarea } from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
 import Card, { CardHeader } from "@/components/ui/Card";
-import { Zap, Mail, Phone, Users, Plus, Trash2, CheckCircle, MessageSquare } from "lucide-react";
+import { Zap, Mail, Phone, Users, Plus, Trash2, CheckCircle, Play, UserPlus, X } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 
 interface SequenceStep {
@@ -41,6 +41,12 @@ export default function SequencesPage() {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedSeq, setSelectedSeq] = useState<Sequence | null>(null);
+  const [enrollModal, setEnrollModal] = useState<Sequence | null>(null);
+  const [contactSearch, setContactSearch] = useState("");
+  const [contactResults, setContactResults] = useState<{id:string;firstName:string;lastName:string;email:string|null}[]>([]);
+  const [enrollIds, setEnrollIds] = useState<Set<string>>(new Set());
+  const [enrolling, setEnrolling] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   const [form, setForm] = useState({ name: "", description: "", status: "active" });
   const [steps, setSteps] = useState<SequenceStep[]>([
@@ -85,6 +91,43 @@ export default function SequencesPage() {
     load();
   }
 
+  useEffect(() => {
+    if (!contactSearch.trim()) { setContactResults([]); return; }
+    const t = setTimeout(async () => {
+      const res = await fetch(`/api/contacts?search=${encodeURIComponent(contactSearch)}`);
+      const data = await res.json();
+      setContactResults(data.slice(0, 10));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [contactSearch]);
+
+  async function handleEnroll() {
+    if (!enrollModal || enrollIds.size === 0) return;
+    setEnrolling(true);
+    const res = await fetch(`/api/sequences/${enrollModal.id}/enroll`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactIds: Array.from(enrollIds) }),
+    });
+    const result = await res.json();
+    setEnrolling(false);
+    setEnrollModal(null);
+    setEnrollIds(new Set());
+    setContactSearch("");
+    setContactResults([]);
+    load();
+    alert(`Enrolled ${result.enrolled} contact(s) (${result.skipped} already enrolled)`);
+  }
+
+  async function handleProcess() {
+    setProcessing(true);
+    const res = await fetch("/api/sequences/process", { method: "POST" });
+    const result = await res.json();
+    setProcessing(false);
+    alert(`Processed ${result.processed} step(s) — tasks created for due steps.`);
+    load();
+  }
+
   async function toggleStatus(seq: Sequence) {
     const newStatus = seq.status === "active" ? "paused" : "active";
     await fetch(`/api/sequences/${seq.id}`, {
@@ -115,6 +158,18 @@ export default function SequencesPage() {
           </div>
         ) : (
           <div className="grid gap-4">
+            {/* Run Due Steps banner */}
+            <div className="flex items-center justify-between px-4 py-3 bg-green-50 border border-green-200 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-green-800">Sequence Automation</p>
+                <p className="text-xs text-green-600 mt-0.5">Run this daily to advance enrollments and create tasks for due steps.</p>
+              </div>
+              <button onClick={handleProcess} disabled={processing}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50">
+                <Play size={13} />
+                {processing ? "Processing..." : "Run Due Steps"}
+              </button>
+            </div>
             {sequences.map((seq) => (
               <div key={seq.id} className={`bg-white rounded-xl border-2 transition-colors cursor-pointer ${selectedSeq?.id === seq.id ? "border-blue-400" : "border-slate-200 hover:border-slate-300"}`}
                 onClick={() => setSelectedSeq(selectedSeq?.id === seq.id ? null : seq)}>
@@ -157,6 +212,10 @@ export default function SequencesPage() {
                         <p className="text-xl font-bold text-slate-900">{seq.steps.length}</p>
                         <p className="text-xs text-slate-500">steps</p>
                       </div>
+                      <button onClick={(e) => { e.stopPropagation(); setEnrollModal(seq); setEnrollIds(new Set()); setContactSearch(""); setContactResults([]); }}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors">
+                        <UserPlus size={11} /> Enroll
+                      </button>
                       <button onClick={(e) => { e.stopPropagation(); toggleStatus(seq); }}
                         className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                           seq.status === "active"
@@ -265,6 +324,46 @@ export default function SequencesPage() {
             </div>
           </div>
         </form>
+      </Modal>
+
+      {/* Enroll Contacts Modal */}
+      <Modal open={!!enrollModal} onClose={() => setEnrollModal(null)} title={`Enroll Contacts — ${enrollModal?.name}`}
+        footer={
+          <>
+            <button onClick={() => setEnrollModal(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
+            <button onClick={handleEnroll} disabled={enrolling || enrollIds.size === 0}
+              className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50">
+              {enrolling ? "Enrolling..." : `Enroll ${enrollIds.size} Contact${enrollIds.size !== 1 ? "s" : ""}`}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <input
+            value={contactSearch}
+            onChange={(e) => setContactSearch(e.target.value)}
+            placeholder="Search contacts by name or email..."
+            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+          />
+          {contactResults.length > 0 && (
+            <div className="border border-slate-200 rounded-lg overflow-hidden max-h-60 overflow-y-auto">
+              {contactResults.map((c) => (
+                <label key={c.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 cursor-pointer">
+                  <input type="checkbox" checked={enrollIds.has(c.id)}
+                    onChange={() => setEnrollIds((prev) => { const n = new Set(prev); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n; })}
+                    className="rounded border-slate-300 text-blue-600" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{c.firstName} {c.lastName}</p>
+                    {c.email && <p className="text-xs text-slate-500">{c.email}</p>}
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+          {enrollIds.size > 0 && (
+            <p className="text-xs text-blue-600 font-medium">{enrollIds.size} contact{enrollIds.size !== 1 ? "s" : ""} selected</p>
+          )}
+        </div>
       </Modal>
     </div>
   );

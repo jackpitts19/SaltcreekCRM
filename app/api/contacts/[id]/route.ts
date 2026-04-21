@@ -18,6 +18,7 @@ export async function GET(
       callLogs: { orderBy: { calledAt: "desc" }, take: 50 },
       dealContacts: { include: { deal: { include: { company: true } } } },
       activities: { orderBy: { createdAt: "desc" }, take: 50 },
+      textMessages: { orderBy: { sentAt: "asc" }, take: 100 },
       sequenceEnrollments: {
         include: { sequence: true },
         orderBy: { enrolledAt: "desc" },

@@ -4,8 +4,9 @@ import { useState, useEffect, use } from "react";
 import TopBar from "@/components/layout/TopBar";
 import Badge from "@/components/ui/Badge";
 import Card, { CardHeader } from "@/components/ui/Card";
-import { Textarea } from "@/components/ui/Input";
-import { Globe, MapPin, Users, DollarSign, ChevronLeft, Building2, Pin, PinOff, Mail, Phone, Sparkles, Linkedin } from "lucide-react";
+import Modal from "@/components/ui/Modal";
+import Input, { Textarea, Select } from "@/components/ui/Input";
+import { Globe, MapPin, Users, DollarSign, ChevronLeft, Building2, Pin, PinOff, Mail, Phone, Sparkles, Link2, Clock, StickyNote, TrendingUp, ArrowRightLeft, UserPlus, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency, formatRelativeTime, formatDate, formatDuration, getDealStage, getDealType } from "@/lib/utils";
 import { useUser } from "@/lib/userContext";
@@ -39,7 +40,7 @@ interface CompanyDetail {
   callLogs: CallLog[];
 }
 
-type Tab = "overview" | "emails" | "calls";
+type Tab = "overview" | "emails" | "calls" | "activity";
 
 export default function CompanyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -50,6 +51,11 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
   const [noteText, setNoteText] = useState("");
   const [addingNote, setAddingNote] = useState(false);
   const [enriching, setEnriching] = useState(false);
+
+  // Edit company state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", industry: "", subIndustry: "", description: "", website: "", linkedinUrl: "", hqLocation: "", employeeCount: "", revenue: "", status: "prospect", tier: "tier3" });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   async function load() {
     const res = await fetch(`/api/companies/${id}`);
@@ -91,6 +97,42 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
+  function openEditModal() {
+    if (!company) return;
+    setEditForm({
+      name: company.name,
+      industry: company.industry ?? "",
+      subIndustry: company.subIndustry ?? "",
+      description: company.description ?? "",
+      website: company.website ?? "",
+      linkedinUrl: company.linkedinUrl ?? "",
+      hqLocation: company.hqLocation ?? "",
+      employeeCount: company.employeeCount ? String(company.employeeCount) : "",
+      revenue: company.revenue ? String(company.revenue) : "",
+      status: company.status,
+      tier: company.tier,
+    });
+    setShowEditModal(true);
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingEdit(true);
+    const res = await fetch(`/api/companies/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editForm),
+    });
+    setSavingEdit(false);
+    if (!res.ok) {
+      toast.error("Failed to save changes");
+      return;
+    }
+    setShowEditModal(false);
+    toast.success("Company updated");
+    load();
+  }
+
   async function togglePin(noteId: string, isPinned: boolean) {
     await fetch(`/api/notes?id=${noteId}`, {
       method: "PATCH",
@@ -106,12 +148,24 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
     </div>
   );
 
-  const tierLabel: Record<string, string> = { "1": "Tier 1", "2": "Tier 2", "3": "Tier 3" };
+  const tierLabel: Record<string, string> = { tier1: "Tier 1", tier2: "Tier 2", tier3: "Tier 3", "1": "Tier 1", "2": "Tier 2", "3": "Tier 3" };
+
+  const activityIconMap: Record<string, React.ElementType> = {
+    email: Mail, call: Phone, note: StickyNote, deal_created: TrendingUp,
+    deal_stage_change: ArrowRightLeft, contact_created: UserPlus, meeting: CalendarDays,
+  };
+  const activityIconColor: Record<string, string> = {
+    email: "text-blue-500 bg-blue-50", call: "text-green-600 bg-green-50",
+    note: "text-amber-500 bg-amber-50", deal_created: "text-emerald-600 bg-emerald-50",
+    deal_stage_change: "text-violet-500 bg-violet-50", contact_created: "text-indigo-500 bg-indigo-50",
+    meeting: "text-rose-500 bg-rose-50",
+  };
 
   const tabs = [
     { id: "overview" as Tab, label: "Overview" },
     { id: "emails" as Tab, label: `Emails (${company.emailLogs.length})` },
     { id: "calls" as Tab, label: `Calls (${company.callLogs.length})` },
+    { id: "activity" as Tab, label: `Activity (${company.activities.length})` },
   ];
 
   return (
@@ -119,10 +173,7 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
       <TopBar
         title={company.name}
         subtitle={[company.industry, company.hqLocation].filter(Boolean).join(" · ")}
-        action={{
-          label: enriching ? "Enriching..." : "Enrich with AI",
-          onClick: enrichCompany,
-        }}
+        action={{ label: enriching ? "Enriching..." : "Enrich with AI", onClick: enrichCompany }}
       />
 
       <div className="p-6 space-y-5">
@@ -143,6 +194,10 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
                 <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
                   {tierLabel[company.tier] ?? `Tier ${company.tier}`}
                 </span>
+                <button onClick={openEditModal}
+                  className="ml-auto flex items-center gap-1.5 px-3 py-1 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                  Edit
+                </button>
               </div>
               {company.industry && <p className="text-slate-500 mt-0.5">{company.industry}{company.subIndustry ? ` · ${company.subIndustry}` : ""}</p>}
               {company.description && <p className="text-sm text-slate-600 mt-2 max-w-2xl">{company.description}</p>}
@@ -157,7 +212,7 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
               {company.linkedinUrl && (
                 <a href={company.linkedinUrl} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 text-slate-600 hover:text-blue-600">
-                  <Linkedin size={14} className="text-slate-400" /> LinkedIn
+                  <Link2 size={14} className="text-slate-400" /> LinkedIn
                 </a>
               )}
               {company.hqLocation && (
@@ -187,15 +242,16 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
         {/* Stats row */}
         <div className="grid grid-cols-4 gap-3">
           {[
-            { label: "Contacts", value: company.contacts.length },
-            { label: "Open Deals", value: company.deals.length },
-            { label: "Emails", value: company.emailLogs.length },
-            { label: "Calls", value: company.callLogs.length },
+            { label: "Contacts", value: company.contacts.length, tab: null, anchor: "#contacts" },
+            { label: "Open Deals", value: company.deals.length, tab: null, anchor: "#deals" },
+            { label: "Emails", value: company.emailLogs.length, tab: "emails" as Tab, anchor: null },
+            { label: "Calls", value: company.callLogs.length, tab: "calls" as Tab, anchor: null },
           ].map((s) => (
-            <div key={s.label} className="bg-white rounded-xl border border-slate-200 px-4 py-3 text-center">
+            <button key={s.label} onClick={() => s.tab && setActiveTab(s.tab)}
+              className={`bg-white rounded-xl border border-slate-200 px-4 py-3 text-center transition-all ${s.tab ? "hover:border-blue-300 hover:shadow-sm cursor-pointer" : "cursor-default"}`}>
               <p className="text-2xl font-bold text-slate-900">{s.value}</p>
               <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
-            </div>
+            </button>
           ))}
         </div>
 
@@ -401,7 +457,91 @@ export default function CompanyDetailPage({ params }: { params: Promise<{ id: st
             </table>
           </Card>
         )}
+
+        {/* Activity Tab */}
+        {activeTab === "activity" && (
+          <Card padding={false}>
+            {company.activities.length === 0 ? (
+              <div className="py-12 text-center">
+                <Clock size={28} className="text-slate-300 mx-auto mb-2" />
+                <p className="text-slate-500 text-sm">No activity recorded yet</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {company.activities.map((activity) => {
+                  const IconComponent = activityIconMap[activity.type] ?? Clock;
+                  const iconColor = activityIconColor[activity.type] ?? "text-slate-500 bg-slate-100";
+                  return (
+                    <div key={activity.id} className="flex gap-4 px-5 py-3.5">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${iconColor}`}>
+                        <IconComponent size={13} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-700">{activity.description}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{formatRelativeTime(activity.createdAt)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        )}
       </div>
+
+      {/* Edit Company Modal */}
+      <Modal open={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Company" size="lg"
+        footer={
+          <>
+            <button onClick={() => setShowEditModal(false)}
+              className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+              Cancel
+            </button>
+            <button onClick={saveEdit} disabled={savingEdit}
+              className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50">
+              {savingEdit ? "Saving..." : "Save Changes"}
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={saveEdit} className="grid grid-cols-2 gap-4">
+          <Input label="Company Name" required value={editForm.name}
+            onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} className="col-span-2" />
+          <Input label="Industry" value={editForm.industry}
+            onChange={(e) => setEditForm((f) => ({ ...f, industry: e.target.value }))} />
+          <Input label="Sub-Industry" value={editForm.subIndustry}
+            onChange={(e) => setEditForm((f) => ({ ...f, subIndustry: e.target.value }))} />
+          <Input label="HQ Location" value={editForm.hqLocation}
+            onChange={(e) => setEditForm((f) => ({ ...f, hqLocation: e.target.value }))} />
+          <Input label="Website" type="url" value={editForm.website}
+            onChange={(e) => setEditForm((f) => ({ ...f, website: e.target.value }))} />
+          <Input label="LinkedIn URL" value={editForm.linkedinUrl}
+            onChange={(e) => setEditForm((f) => ({ ...f, linkedinUrl: e.target.value }))} className="col-span-2" />
+          <Input label="Employee Count" type="number" value={editForm.employeeCount}
+            onChange={(e) => setEditForm((f) => ({ ...f, employeeCount: e.target.value }))} />
+          <Input label="Revenue (USD)" type="number" value={editForm.revenue}
+            onChange={(e) => setEditForm((f) => ({ ...f, revenue: e.target.value }))} />
+          <Select label="Status" value={editForm.status}
+            onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+            options={[
+              { value: "prospect", label: "Prospect" },
+              { value: "active", label: "Active" },
+              { value: "client", label: "Client" },
+              { value: "inactive", label: "Inactive" },
+              { value: "churned", label: "Churned" },
+            ]} />
+          <Select label="Tier" value={editForm.tier}
+            onChange={(e) => setEditForm((f) => ({ ...f, tier: e.target.value }))}
+            options={[
+              { value: "tier1", label: "Tier 1" },
+              { value: "tier2", label: "Tier 2" },
+              { value: "tier3", label: "Tier 3" },
+            ]} />
+          <Textarea label="Description" value={editForm.description}
+            onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+            rows={3} className="col-span-2" />
+        </form>
+      </Modal>
     </div>
   );
 }

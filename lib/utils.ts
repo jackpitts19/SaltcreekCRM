@@ -53,25 +53,22 @@ export function getInitials(name: string): string {
 }
 
 export const DEAL_STAGES = [
-  { id: "prospecting", label: "Prospecting", color: "#64748b" },
-  { id: "initial_contact", label: "Initial Contact", color: "#f59e0b" },
-  { id: "pitch", label: "Pitch", color: "#8b5cf6" },
-  { id: "diligence", label: "Diligence", color: "#3b82f6" },
-  { id: "loi", label: "LOI / Term Sheet", color: "#06b6d4" },
-  { id: "negotiation", label: "Negotiation", color: "#f97316" },
-  { id: "closing", label: "Closing", color: "#10b981" },
-  { id: "closed_won", label: "Closed Won", color: "#22c55e" },
+  { id: "prospect",    label: "Prospect",    color: "#64748b" },
+  { id: "outreach",    label: "Outreach",    color: "#f59e0b" },
+  { id: "intro_call",  label: "Intro Call",  color: "#8b5cf6" },
+  { id: "nda",         label: "NDA Signed",  color: "#3b82f6" },
+  { id: "cim",         label: "CIM Sent",    color: "#06b6d4" },
+  { id: "ioi",         label: "IOI",         color: "#f97316" },
+  { id: "loi",         label: "LOI",         color: "#10b981" },
+  { id: "diligence",   label: "Diligence",   color: "#0ea5e9" },
+  { id: "closing",     label: "Closing",     color: "#84cc16" },
+  { id: "closed_won",  label: "Closed Won",  color: "#22c55e" },
   { id: "closed_lost", label: "Closed Lost", color: "#ef4444" },
 ];
 
 export const DEAL_TYPES = [
-  { id: "ma_buyside", label: "M&A Buy-side" },
   { id: "ma_sellside", label: "M&A Sell-side" },
-  { id: "ipo", label: "IPO" },
-  { id: "debt", label: "Debt Financing" },
-  { id: "equity", label: "Equity Financing" },
-  { id: "advisory", label: "Advisory" },
-  { id: "restructuring", label: "Restructuring" },
+  { id: "ma_buyside", label: "M&A Buy-side" },
 ];
 
 export const LEAD_SOURCES = [

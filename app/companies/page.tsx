@@ -5,7 +5,8 @@ import TopBar from "@/components/layout/TopBar";
 import Modal from "@/components/ui/Modal";
 import Input, { Select, Textarea } from "@/components/ui/Input";
 import Badge from "@/components/ui/Badge";
-import { Search, Building2, Globe, MapPin, Users, TrendingUp } from "lucide-react";
+import { Search, Building2, Globe, MapPin, Users, TrendingUp, Upload, Download } from "lucide-react";
+import { useToast } from "@/lib/toast";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 
@@ -34,6 +35,8 @@ export default function CompaniesPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const toast = useToast();
 
   const [form, setForm] = useState({
     name: "", domain: "", industry: "", subIndustry: "", description: "",
@@ -55,6 +58,31 @@ export default function CompaniesPage() {
     const t = setTimeout(load, 300);
     return () => clearTimeout(t);
   }, [load]);
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setImporting(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/companies/import", { method: "POST", body: fd });
+    const result = await res.json();
+    setImporting(false);
+    if (!res.ok) {
+      toast.error(result.error ?? "Import failed");
+    } else {
+      toast.success(`Imported ${result.created} companies (${result.skipped} skipped)`);
+      load();
+    }
+  }
+
+  function handleExport() {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (statusFilter) params.set("status", statusFilter);
+    window.location.href = `/api/companies/export?${params}`;
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -102,6 +130,15 @@ export default function CompaniesPage() {
             <option value="client">Client</option>
             <option value="inactive">Inactive</option>
           </select>
+          <label className={`flex items-center gap-1.5 px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white cursor-pointer hover:bg-slate-50 ${importing ? "opacity-50 pointer-events-none" : ""}`}>
+            <Upload size={14} className="text-slate-500" />
+            {importing ? "Importing..." : "Import"}
+            <input type="file" accept=".csv" className="hidden" onChange={handleImport} disabled={importing} />
+          </label>
+          <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white hover:bg-slate-50">
+            <Download size={14} className="text-slate-500" />
+            Export
+          </button>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -154,16 +191,31 @@ export default function CompaniesPage() {
                     {formatCurrency(c.revenue)}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-3 text-xs text-slate-500">
-                      <span className="flex items-center gap-1"><Users size={12} /> {c._count.contacts}</span>
-                      <span className="flex items-center gap-1"><TrendingUp size={12} /> {c._count.deals}</span>
+                    <div className="flex gap-3 text-xs">
+                      <span className={`flex items-center gap-1 ${c._count.contacts > 0 ? "text-blue-500" : "text-slate-400"}`}>
+                        <Users size={12} /> {c._count.contacts}
+                      </span>
+                      <span className={`flex items-center gap-1 ${c._count.deals > 0 ? "text-emerald-600" : "text-slate-400"}`}>
+                        <TrendingUp size={12} /> {c._count.deals}
+                      </span>
                     </div>
                   </td>
                   <td className="px-4 py-3"><Badge>{c.status}</Badge></td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tierColors[c.tier] ?? "bg-slate-100 text-slate-600"}`}>
-                      {tierLabel[c.tier] ?? c.tier}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tierColors[c.tier] ?? "bg-slate-100 text-slate-600"}`}>
+                        {tierLabel[c.tier] ?? c.tier}
+                      </span>
+                      {c.website && (
+                        <a href={c.website.startsWith("http") ? c.website : `https://${c.website}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="text-slate-400 hover:text-blue-600 transition-colors"
+                          title="Visit website"
+                          onClick={(e) => e.stopPropagation()}>
+                          <Globe size={13} />
+                        </a>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

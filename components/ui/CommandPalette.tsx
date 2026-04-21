@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Users, Building2, TrendingUp, FileText, Phone, Mail, ArrowRight } from "lucide-react";
+import { Search, Users, Building2, TrendingUp, FileText, Phone, Mail, ArrowRight, UserPlus, CheckSquare, PhoneForwarded, Mic, Zap } from "lucide-react";
 
 interface Result {
   id: string;
@@ -18,13 +18,21 @@ const TYPE_ICON: Record<Result["type"], React.ReactNode> = {
   deal: <TrendingUp size={14} className="text-emerald-500" />,
 };
 
-const QUICK_LINKS = [
-  { label: "Contacts", href: "/contacts", icon: <Users size={14} /> },
-  { label: "Companies", href: "/companies", icon: <Building2 size={14} /> },
-  { label: "Pipeline", href: "/deals", icon: <TrendingUp size={14} /> },
-  { label: "Notes", href: "/notes", icon: <FileText size={14} /> },
-  { label: "Calls", href: "/calls", icon: <Phone size={14} /> },
-  { label: "Emails", href: "/emails", icon: <Mail size={14} /> },
+const QUICK_ACTIONS = [
+  { label: "New Contact", href: "/contacts/new", icon: <UserPlus size={14} className="text-blue-500" />, hint: "Add a contact" },
+  { label: "Start Power Dialing", href: "/calls/dialer", icon: <PhoneForwarded size={14} className="text-green-600" />, hint: "Power dialer" },
+  { label: "Record a Meeting", href: "/meetings/record", icon: <Mic size={14} className="text-violet-500" />, hint: "AI transcription" },
+  { label: "New Task", href: "/tasks?new=1", icon: <CheckSquare size={14} className="text-amber-500" />, hint: "Create a task" },
+];
+
+const QUICK_NAV = [
+  { label: "Contacts", href: "/contacts", icon: <Users size={14} className="text-slate-500" /> },
+  { label: "Companies", href: "/companies", icon: <Building2 size={14} className="text-slate-500" /> },
+  { label: "Pipeline", href: "/deals", icon: <TrendingUp size={14} className="text-slate-500" /> },
+  { label: "Emails", href: "/emails", icon: <Mail size={14} className="text-slate-500" /> },
+  { label: "Calls", href: "/calls", icon: <Phone size={14} className="text-slate-500" /> },
+  { label: "Notes", href: "/notes", icon: <FileText size={14} className="text-slate-500" /> },
+  { label: "Sequences", href: "/sequences", icon: <Zap size={14} className="text-slate-500" /> },
 ];
 
 export default function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -88,7 +96,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   }, [query, search]);
 
   const allItems = query ? results : [];
-  const totalItems = query ? allItems.length : QUICK_LINKS.length;
+  const totalItems = query ? allItems.length : QUICK_ACTIONS.length + QUICK_NAV.length;
 
   function navigate(href: string) {
     router.push(href);
@@ -101,7 +109,11 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     if (e.key === "ArrowUp") { e.preventDefault(); setSelected((s) => Math.max(s - 1, 0)); }
     if (e.key === "Enter") {
       e.preventDefault();
-      if (!query) { navigate(QUICK_LINKS[selected]?.href); return; }
+      if (!query) {
+        if (selected < QUICK_ACTIONS.length) navigate(QUICK_ACTIONS[selected].href);
+        else navigate(QUICK_NAV[selected - QUICK_ACTIONS.length]?.href);
+        return;
+      }
       if (allItems[selected]) navigate(allItems[selected].href);
     }
   }
@@ -133,18 +145,37 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
         {/* Results */}
         <div className="max-h-80 overflow-y-auto">
           {!query && (
-            <div className="p-2">
-              <p className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Quick Navigation</p>
-              {QUICK_LINKS.map((link, i) => (
-                <button key={link.href} onClick={() => navigate(link.href)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                    selected === i ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"
-                  }`}>
-                  <span className="text-slate-400">{link.icon}</span>
-                  {link.label}
-                  <ArrowRight size={12} className="ml-auto text-slate-300" />
-                </button>
-              ))}
+            <div className="p-2 space-y-3">
+              <div>
+                <p className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Quick Actions</p>
+                {QUICK_ACTIONS.map((item, i) => (
+                  <button key={item.href} onClick={() => navigate(item.href)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                      selected === i ? "bg-blue-50" : "hover:bg-slate-50"
+                    }`}>
+                    <span className="flex-shrink-0">{item.icon}</span>
+                    <span className={`font-medium ${selected === i ? "text-blue-700" : "text-slate-800"}`}>{item.label}</span>
+                    <span className="text-xs text-slate-400 ml-auto">{item.hint}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="border-t border-slate-100 pt-2">
+                <p className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Navigate</p>
+                <div className="grid grid-cols-2 gap-0.5">
+                  {QUICK_NAV.map((link, i) => {
+                    const idx = QUICK_ACTIONS.length + i;
+                    return (
+                      <button key={link.href} onClick={() => navigate(link.href)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          selected === idx ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"
+                        }`}>
+                        {link.icon}
+                        {link.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 

@@ -1,8 +1,10 @@
 "use client";
 
-import { Search, Bell, Plus } from "lucide-react";
+import { Search, Plus, Menu } from "lucide-react";
 import { useState, useEffect } from "react";
 import CommandPalette from "@/components/ui/CommandPalette";
+import { useMobileSidebar } from "@/lib/mobileSidebar";
+import NotificationBell from "@/components/ui/NotificationBell";
 
 interface TopBarProps {
   title: string;
@@ -15,11 +17,30 @@ interface TopBarProps {
 
 export default function TopBar({ title, subtitle, action }: TopBarProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const { setOpen } = useMobileSidebar();
 
-  // Also open palette when clicking the search bar
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, []);
+
   return (
     <>
       <header className="sticky top-0 z-20 bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4">
+        {/* Hamburger — mobile only */}
+        <button
+          onClick={() => setOpen(true)}
+          className="md:hidden p-1.5 -ml-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+        >
+          <Menu size={20} />
+        </button>
+
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
           {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
@@ -36,10 +57,7 @@ export default function TopBar({ title, subtitle, action }: TopBarProps) {
             <kbd className="text-xs font-mono bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-400">⌘K</kbd>
           </button>
 
-          <button className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
-            <Bell size={18} />
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full" />
-          </button>
+          <NotificationBell />
 
           {action && (
             <button

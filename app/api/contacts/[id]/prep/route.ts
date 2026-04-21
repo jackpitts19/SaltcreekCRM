@@ -4,8 +4,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import OpenAI from "openai"
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -46,6 +44,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const { id } = await params
   const { context } = await req.json()
 

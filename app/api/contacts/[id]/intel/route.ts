@@ -4,12 +4,11 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import OpenAI from "openai"
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const { id } = await params
 
   const contact = await prisma.contact.findUnique({

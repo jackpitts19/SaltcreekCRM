@@ -5,11 +5,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import OpenAI from "openai"
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
 // Twilio sends a POST here when a call recording is ready
 // Set RECORDING_CALLBACK_URL=https://your-domain.com/api/dialer/recording in .env.local
 export async function POST(req: NextRequest) {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const form = await req.formData()
   const callSid = form.get("CallSid")?.toString() ?? ""
   const recordingUrl = form.get("RecordingUrl")?.toString() ?? ""

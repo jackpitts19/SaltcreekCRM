@@ -4,12 +4,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 // POST /api/ai/draft-email
 // Body: { dealId: string, contactId?: string, tone?: string, context?: string }
 // Returns: { subject: string, body: string }
 export async function POST(req: NextRequest) {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const { dealId, contactId, tone = "professional", context } = await req.json();
   if (!dealId) return NextResponse.json({ error: "dealId required" }, { status: 400 });
 

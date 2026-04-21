@@ -4,12 +4,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 // POST /api/ai/summarize
 // Body: { contactId: string }
 // Returns: { summary: string }
 export async function POST(req: NextRequest) {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const { contactId } = await req.json();
   if (!contactId) return NextResponse.json({ error: "contactId required" }, { status: 400 });
 

@@ -61,7 +61,6 @@ export async function POST() {
       data: {
         title: taskTitle,
         description: step.body ?? step.taskNote ?? null,
-        type: step.type === "email" ? "email" : step.type === "call" ? "call" : "other",
         status: "pending",
         priority: "medium",
         dueDate: dueAt,

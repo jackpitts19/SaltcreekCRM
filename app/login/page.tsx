@@ -19,28 +19,41 @@ function LoginPage() {
     setError("")
     setLoading(true)
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, totp: totp || undefined }),
-    })
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, totp: totp || undefined }),
+      })
 
-    const data = await res.json()
-    setLoading(false)
+      let data: { requireTotp?: boolean; error?: string; ok?: boolean } = {}
+      try {
+        data = await res.json()
+      } catch {
+        setError(`Server error (${res.status}) — check Vercel logs`)
+        setLoading(false)
+        return
+      }
 
-    if (data.requireTotp) {
-      setRequireTotp(true)
-      return
+      setLoading(false)
+
+      if (data.requireTotp) {
+        setRequireTotp(true)
+        return
+      }
+
+      if (!res.ok) {
+        setError(data.error ?? "Login failed")
+        return
+      }
+
+      const redirect = searchParams.get("redirect") || "/"
+      router.push(redirect)
+      router.refresh()
+    } catch (err) {
+      setLoading(false)
+      setError(err instanceof Error ? err.message : "Network error")
     }
-
-    if (!res.ok) {
-      setError(data.error ?? "Login failed")
-      return
-    }
-
-    const redirect = searchParams.get("redirect") || "/"
-    router.push(redirect)
-    router.refresh()
   }
 
   return (

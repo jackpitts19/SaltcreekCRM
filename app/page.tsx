@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import React from "react";
 import { prisma } from "@/lib/db";
 import TopBar from "@/components/layout/TopBar";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopBar from "@/components/layout/TopBar";
 import Modal from "@/components/ui/Modal";
@@ -42,7 +42,7 @@ const ACTIVE_STAGES = DEAL_STAGES.filter(
   (s) => s.id !== "closed_won" && s.id !== "closed_lost"
 );
 
-export default function DealsPage() {
+function DealsPage() {
   const { currentUser } = useUser();
   const toast = useToast();
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -435,5 +435,13 @@ export default function DealsPage() {
         </form>
       </Modal>
     </div>
+  );
+}
+
+export default function DealsPageWrapper() {
+  return (
+    <Suspense>
+      <DealsPage />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopBar from "@/components/layout/TopBar";
 import {
@@ -80,7 +80,7 @@ function formatTime(seconds: number) {
   return `${m}:${s}`;
 }
 
-export default function MeetingRecordPage() {
+function MeetingRecordPage() {
   const searchParams = useSearchParams();
   const [stage, setStage] = useState<Stage>("setup");
   const [source, setSource] = useState<Source>("tab");
@@ -694,5 +694,13 @@ export default function MeetingRecordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MeetingRecordPageWrapper() {
+  return (
+    <Suspense>
+      <MeetingRecordPage />
+    </Suspense>
   );
 }

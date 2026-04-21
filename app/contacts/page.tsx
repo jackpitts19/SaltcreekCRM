@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopBar from "@/components/layout/TopBar";
 import Modal from "@/components/ui/Modal";
@@ -41,7 +41,7 @@ const statusOptions = [
   { value: "inactive", label: "Inactive" },
 ];
 
-export default function ContactsPage() {
+function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -447,5 +447,13 @@ export default function ContactsPage() {
         </form>
       </Modal>
     </div>
+  );
+}
+
+export default function ContactsPageWrapper() {
+  return (
+    <Suspense>
+      <ContactsPage />
+    </Suspense>
   );
 }

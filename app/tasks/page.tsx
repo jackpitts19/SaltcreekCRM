@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopBar from "@/components/layout/TopBar";
 import {
@@ -58,7 +58,7 @@ const emptyForm: {
   dealId: "",
 };
 
-export default function TasksPage() {
+function TasksPage() {
   const searchParams = useSearchParams();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -409,5 +409,13 @@ export default function TasksPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TasksPageWrapper() {
+  return (
+    <Suspense>
+      <TasksPage />
+    </Suspense>
   );
 }

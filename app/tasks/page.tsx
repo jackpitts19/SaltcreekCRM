@@ -40,11 +40,19 @@ const PRIORITY_COLORS = {
   low: "bg-slate-100 text-slate-500",
 };
 
-const emptyForm = {
+const emptyForm: {
+  title: string;
+  description: string;
+  dueDate: string;
+  priority: "low" | "medium" | "high";
+  contactId: string;
+  companyId: string;
+  dealId: string;
+} = {
   title: "",
   description: "",
   dueDate: "",
-  priority: "medium" as const,
+  priority: "medium",
   contactId: "",
   companyId: "",
   dealId: "",

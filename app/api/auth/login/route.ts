@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     res.cookies.set(sessionCookieOptions(token))
     return res
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error("Login error:", err)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
